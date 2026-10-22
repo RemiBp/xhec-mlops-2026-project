@@ -1,4 +1,4 @@
-.PHONY: setup check test data notebooks train
+.PHONY: setup check test data notebooks train flow prefect serve
 
 setup:
 	uv sync --frozen --python 3.11
@@ -19,3 +19,12 @@ notebooks: data
 
 train: data
 	uv run python -m src.modelling.main
+
+flow: data
+	PREFECT_HOME="$(CURDIR)/.prefect" PREFECT_SERVER_ANALYTICS_ENABLED=false uv run python -m src.modelling.workflows run
+
+prefect:
+	PREFECT_HOME="$(CURDIR)/.prefect" PREFECT_SERVER_ANALYTICS_ENABLED=false uv run prefect server start --host 127.0.0.1 --port 4251
+
+serve:
+	PREFECT_HOME="$(CURDIR)/.prefect" PREFECT_API_URL=http://127.0.0.1:4251/api uv run python -m src.modelling.workflows serve
