@@ -1,4 +1,4 @@
-.PHONY: setup check test
+.PHONY: setup check test data notebooks
 
 setup:
 	uv sync --frozen --python 3.11
@@ -10,3 +10,9 @@ check:
 
 test:
 	uv run pytest -q
+
+data:
+	uv run python scripts/download_data.py
+
+notebooks: data
+	uv run python scripts/run_notebooks.py
