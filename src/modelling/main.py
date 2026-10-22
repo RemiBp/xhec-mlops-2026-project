@@ -1,0 +1,80 @@
+"""Train, evaluate and save the Abalone model from a CSV file."""
+
+import argparse
+import hashlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+import mlflow
+import sklearn
+
+from src.modelling.preprocessing import FEATURES, SEED, TARGET, load_data, split_data
+from src.modelling.training import metrics, select_model
+from src.modelling.utils import save_artifact
+
+ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_DATA = ROOT / "data/abalone.csv"
+DEFAULT_MODEL = ROOT / "src/web_service/local_objects/model.pkl"
+
+
+def train_pipeline(
+    data_path: Path = DEFAULT_DATA,
+    model_path: Path = DEFAULT_MODEL,
+    tracking_path: Path | None = ROOT / "mlruns",
+    report_path: Path | None = ROOT / "reports/metrics.json",
+) -> dict:
+    """Use validation for selection; evaluate the selected model on test once."""
+    data, counts = load_data(data_path)
+    train, validation, test = split_data(data)
+    model, name, validation_scores = select_model(train, validation)
+    test_scores = metrics(test[TARGET], model.predict(test[FEATURES]))
+    dataset_hash = hashlib.sha256(data_path.read_bytes()).hexdigest()
+    version_input = {
+        "dataset": dataset_hash,
+        "model": name,
+        "seed": SEED,
+        "parameters": model.named_steps["model"].get_params(),
+    }
+    version = hashlib.sha256(json.dumps(version_input, sort_keys=True).encode()).hexdigest()[:12]
+    metadata = {
+        **counts,
+        "model": name,
+        "model_version": version,
+        "seed": SEED,
+        "features": FEATURES,
+        "target": TARGET,
+        "units": "rings",
+        "train_rows": len(train),
+        "validation_rows": len(validation),
+        "test_rows": len(test),
+        "dataset_sha256": dataset_hash,
+        "sklearn_version": sklearn.__version__,
+        "trained_at": datetime.now(timezone.utc).isoformat(),
+        "validation": validation_scores,
+        "test": test_scores,
+    }
+    if tracking_path is not None:
+        mlflow.set_tracking_uri(tracking_path.resolve().as_uri())
+        mlflow.set_experiment("abalone-training")
+        for candidate, scores in validation_scores.items():
+            with mlflow.start_run(run_name=candidate):
+                mlflow.log_params(
+                    {"model": candidate, "seed": SEED, "dataset_sha256": dataset_hash}
+                )
+                mlflow.log_metrics({f"validation_{key}": value for key, value in scores.items()})
+                if candidate == name:
+                    mlflow.log_metrics({f"test_{key}": value for key, value in test_scores.items()})
+    save_artifact({"pipeline": model, "metadata": metadata}, model_path)
+    if report_path is not None:
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(metadata, indent=2) + "\n")
+    return metadata
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("data", nargs="?", type=Path, default=DEFAULT_DATA)
+    parser.add_argument("--model", type=Path, default=DEFAULT_MODEL)
+    args = parser.parse_args()
+    print(json.dumps(train_pipeline(args.data, args.model), indent=2))
