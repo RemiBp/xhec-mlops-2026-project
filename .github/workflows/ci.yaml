@@ -8,6 +8,8 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    env:
+      PREFECT_SERVER_ANALYTICS_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -18,3 +20,21 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run pytest -q
         if: hashFiles('tests/test_*.py') != ''
+      - run: make notebooks train
+      - run: docker compose up --build -d
+      - run: make smoke
+      - run: make retraining-smoke
+      - name: Runtime logs
+        if: failure()
+        run: docker compose logs --tail 100
+      - name: Stop services
+        if: always()
+        run: docker compose down
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-evidence
+          path: |
+            reports/metrics.json
+            reports/http_verification.json
+            reports/retraining_verification.json

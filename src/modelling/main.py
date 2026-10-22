@@ -4,18 +4,17 @@ import argparse
 import hashlib
 import json
 from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
 
+import joblib
 import mlflow
 import sklearn
 
+from src.modelling.config import DEFAULT_DATA, DEFAULT_MODEL, ROOT
 from src.modelling.preprocessing import FEATURES, SEED, TARGET, load_data, split_data
 from src.modelling.training import metrics, select_model
 from src.modelling.utils import save_artifact
-
-ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DATA = ROOT / "data/abalone.csv"
-DEFAULT_MODEL = ROOT / "src/web_service/local_objects/model.pkl"
 
 
 def build_model_bundle(data_path: Path) -> dict:
@@ -25,13 +24,9 @@ def build_model_bundle(data_path: Path) -> dict:
     model, name, validation_scores = select_model(train, validation)
     test_scores = metrics(test[TARGET], model.predict(test[FEATURES]))
     dataset_hash = hashlib.sha256(data_path.read_bytes()).hexdigest()
-    version_input = {
-        "dataset": dataset_hash,
-        "model": name,
-        "seed": SEED,
-        "parameters": model.named_steps["model"].get_params(),
-    }
-    version = hashlib.sha256(json.dumps(version_input, sort_keys=True).encode()).hexdigest()[:12]
+    serialized_model = BytesIO()
+    joblib.dump(model, serialized_model)
+    version = hashlib.sha256(serialized_model.getvalue()).hexdigest()[:12]
     metadata = {
         **counts,
         "model": name,
