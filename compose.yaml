@@ -1,0 +1,24 @@
+name: abalone-mlops-remi
+
+services:
+  abalone:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    ports:
+      - "127.0.0.1:8526:8001"
+      - "127.0.0.1:4251:4201"
+    environment:
+      PREFECT_UI_API_URL: http://127.0.0.1:4251/api
+    volumes:
+      - ./data:/app/data:ro
+      - model-state:/app/src/web_service/local_objects
+      - prefect-state:/app/.prefect
+      - experiment-state:/app/mlruns
+      - report-state:/app/reports
+
+volumes:
+  model-state:
+  prefect-state:
+  experiment-state:
+  report-state:

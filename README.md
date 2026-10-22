@@ -51,3 +51,45 @@ make serve
 ```
 
 Open `http://127.0.0.1:4251`. The deployment `abalone-retraining/weekly` runs on Mondays at 09:00, Europe/Paris. `make serve` must keep running for scheduled runs to execute. Stop it with Ctrl+C to pause its schedule. Plain `make train` works without a Prefect server. Both paths call the same build and publication functions.
+
+## Prediction API
+
+```bash
+make train
+make api
+```
+
+Open [the API documentation](http://127.0.0.1:8526/docs). `POST /predict` accepts sex (`M`, `F` or `I`) and the seven positive, finite measurements, using the dataset's original scale. It returns a continuous ring count, approximate age in years and the model version. Rings and age are not accepted as input. `/predict/batch` accepts one to 1,000 records; `/health` reports model readiness.
+
+```bash
+curl -s http://127.0.0.1:8526/predict \
+  -H 'Content-Type: application/json' \
+  -d '{"sex":"M","length":0.455,"diameter":0.365,"height":0.095,"whole_weight":0.514,"shucked_weight":0.2245,"viscera_weight":0.101,"shell_weight":0.15}'
+```
+
+The API loads the full saved pipeline. After retraining atomically replaces the file, the next request reloads it. It never retrains inside a prediction request. Requests outside the original data distribution are not automatically detected; predictions are estimates without individual uncertainty intervals.
+
+## Docker
+
+Docker Desktop or Docker Engine with Compose is required.
+
+```bash
+make up
+make smoke
+# When finished:
+make down
+```
+
+`make up` downloads the verified dataset, builds the image and starts the API, a local Prefect server and the weekly retraining runner. The container trains once before starting the API, so startup takes longer than a prediction. Both ports bind to localhost: API at `8526`, Prefect at `4251`. Docker stores the model, experiment history and Prefect state in named volumes. The data folder is mounted read-only. Retraining uses the current CSV; downloading new data is a separate step.
+
+For a manual scheduled-run test:
+
+```bash
+docker compose exec abalone prefect deployment run abalone-retraining/weekly
+```
+
+Watch the run finish in the Prefect UI. Stopping the container stops its runner, so it cannot execute future jobs. `make down` preserves state; no cloud deployment is required to reproduce the project.
+
+## Checks
+
+`make check` runs lint and formatting checks. `make test` covers partition isolation, data validation, serialized-model parity, HTTP contracts, model reloading and a real Prefect flow against a temporary database. CI also executes the notebooks, builds and starts Docker, then checks real HTTP predictions against the local artifact. No dataset, fitted model or MLflow history is tracked in Git.

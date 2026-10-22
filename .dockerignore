@@ -1,0 +1,11 @@
+*
+!pyproject.toml
+!uv.lock
+!src/
+!src/**
+!data/
+!data/abalone.csv
+!bin/
+!bin/run_services.sh
+**/__pycache__
+src/web_service/local_objects/*

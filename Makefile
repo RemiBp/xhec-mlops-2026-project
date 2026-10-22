@@ -1,4 +1,4 @@
-.PHONY: setup check test data notebooks train flow prefect serve
+.PHONY: setup check test data notebooks train flow prefect serve api up down smoke
 
 setup:
 	uv sync --frozen --python 3.11
@@ -28,3 +28,15 @@ prefect:
 
 serve:
 	PREFECT_HOME="$(CURDIR)/.prefect" PREFECT_API_URL=http://127.0.0.1:4251/api uv run python -m src.modelling.workflows serve
+
+api:
+	uv run uvicorn src.web_service.main:app --host 127.0.0.1 --port 8526
+
+up: data
+	docker compose up --build -d
+
+down:
+	docker compose down
+
+smoke:
+	uv run python -m scripts.smoke_test
