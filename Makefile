@@ -1,4 +1,4 @@
-.PHONY: setup check test data notebooks
+.PHONY: setup check test data notebooks train
 
 setup:
 	uv sync --frozen --python 3.11
@@ -16,3 +16,6 @@ data:
 
 notebooks: data
 	uv run python scripts/run_notebooks.py
+
+train: data
+	uv run python -m src.modelling.main
