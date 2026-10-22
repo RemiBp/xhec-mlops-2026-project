@@ -14,6 +14,14 @@ from src.web_service.lib.models import Abalone
 async def verify():
     base = "http://127.0.0.1:8526"
     before = call(base, "/health")
+    for _ in range(90):
+        try:
+            call("http://127.0.0.1:4251", "/api/health")
+            break
+        except OSError:
+            await asyncio.sleep(1)
+    else:
+        raise RuntimeError("Prefect API did not become ready")
     async with get_client() as client:
         for _ in range(90):
             try:
