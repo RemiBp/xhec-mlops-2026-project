@@ -23,6 +23,7 @@ jobs:
       - run: make notebooks train
       - run: docker compose up --build -d
       - run: make smoke
+      - run: make retraining-smoke
       - name: Runtime logs
         if: failure()
         run: docker compose logs --tail 100
@@ -36,3 +37,4 @@ jobs:
           path: |
             reports/metrics.json
             reports/http_verification.json
+            reports/retraining_verification.json

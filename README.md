@@ -76,6 +76,7 @@ Docker Desktop or Docker Engine with Compose is required.
 ```bash
 make up
 make smoke
+make retraining-smoke
 # When finished:
 make down
 ```
@@ -89,6 +90,8 @@ docker compose exec abalone prefect deployment run abalone-retraining/weekly
 ```
 
 Watch the run finish in the Prefect UI. Stopping the container stops its runner, so it cannot execute future jobs. `make down` preserves state; no cloud deployment is required to reproduce the project.
+
+`make retraining-smoke` starts a run through the registered deployment, waits for completion and confirms that a subsequent API prediction uses the newly published artifact. It writes the result to `reports/retraining_verification.json`.
 
 ## Checks
 

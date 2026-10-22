@@ -1,4 +1,4 @@
-.PHONY: setup check test data notebooks train flow prefect serve api up down smoke
+.PHONY: setup check test data notebooks train flow prefect serve api up down smoke retraining-smoke
 
 setup:
 	uv sync --frozen --python 3.11
@@ -40,3 +40,6 @@ down:
 
 smoke:
 	uv run python -m scripts.smoke_test
+
+retraining-smoke:
+	PREFECT_HOME="$(CURDIR)/.prefect" PREFECT_API_URL=http://127.0.0.1:4251/api PREFECT_SERVER_ANALYTICS_ENABLED=false uv run python -m scripts.verify_retraining
