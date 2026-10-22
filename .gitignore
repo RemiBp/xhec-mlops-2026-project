@@ -85,3 +85,16 @@ secrets/*
 
 # Mac files
 .DS_Store
+
+# Local datasets, fitted objects, experiments and Prefect state
+/data/
+/reports/
+/mlruns/
+/.prefect/
+/.pytest_cache/
+/.ruff_cache/
+/src/web_service/local_objects/*
+!/src/web_service/local_objects/.gitkeep
+*.db
+*.db-shm
+*.db-wal
